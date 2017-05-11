@@ -1,0 +1,1376 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "AdminUserName": {
+      "type": "string",
+      "defaultValue": "AdminUser",
+      "minLength": 1
+    },
+    "AdminPassword": {
+      "type": "securestring",
+      "minLength": 15
+    },
+    "WindowsOSVersion": {
+      "type": "string",
+      "defaultValue": "2012-R2-Datacenter",
+      "allowedValues": [
+        "2008-R2-SP1",
+        "2012-Datacenter",
+        "2012-R2-Datacenter",
+        "Windows-Server-Technical-Preview"
+      ]
+    },
+    "StorageTypeArray": {
+      "type": "array",
+      "defaultValue": [ "Standard_LRS", "Standard_LRS", "Standard_LRS", "Premium_LRS" ]
+    },
+    "StorageNameArray": {
+      "type": "array",
+      "defaultValue": [ "dhakpgenprdsa01", "dhakpgenprdsa02", "dhakpgendiagsa01", "dhakpdbprdsa01" ]
+    },
+    "AvailabilitySetArray": {
+      "type": "array",
+      "defaultValue": [ "WebAvailSet", "DBAvailSet", "FileAvailSet", "AppAvailSet", "MgmtAvailSet" ]
+    },
+    "DHA-KP-PTS01-PubIPDnsName": {
+      "type": "string",
+      "defaultValue": "magkpaccess1",
+      "minLength": 1
+    },
+    "DHA-KP-PWEB01-PubIPDnsName": {
+      "type": "string",
+      "defaultValue": "magkpweb1",
+      "minLength": 1
+    },
+    "DHA-KP-PTS01Name": {
+      "type": "string",
+      "defaultValue": "DHA-KP-PTS01",
+      "minLength": 1
+    },
+    "DHA-HS-DC1Name": {
+      "type": "string",
+      "defaultValue": "DHA-HS-DC1",
+      "minLength": 1
+    },
+    "DHA-KP-PWEB01Name": {
+      "type": "string",
+      "defaultValue": "DHA-KP-PWEB01",
+      "minLength": 1
+    },
+    "DHA-KP-SAPP01Name": {
+      "type": "string",
+      "defaultValue": "DHA-KP-SAPP01",
+      "minLength": 1
+    },
+    "DHA-KP-SMED01Name": {
+      "type": "string",
+      "defaultValue": "DHA-KP-SMED01",
+      "minLength": 1
+    },
+    "DHA-KP-SWEB01Name": {
+      "type": "string",
+      "defaultValue": "DHA-KP-SWEB01",
+      "minLength": 1
+    },
+    "DHA-KP-PAPP01Name": {
+      "type": "string",
+      "defaultValue": "DHA-KP-PAPP01",
+      "minLength": 1
+    },
+    "DHA-KP-PFILE01Name": {
+      "type": "string",
+      "defaultValue": "DHA-KP-PFILE01",
+      "minLength": 1
+    },
+    "DHA-KP-PMED01Name": {
+      "type": "string",
+      "defaultValue": "DHA-KP-PMED01",
+      "minLength": 1
+    },
+    "WebAvailSetName": {
+      "type": "string",
+      "defaultValue": "WebAvailSet",
+      "minLength": 1
+    },
+    "DBAvailSetName": {
+      "type": "string",
+      "defaultValue": "DBAvailSet",
+      "minLength": 1
+    },
+    "FileAvailSetName": {
+      "type": "string",
+      "defaultValue": "FileAvailSet",
+      "minLength": 1
+    },
+    "AppAvailSetName": {
+      "type": "string",
+      "defaultValue": "AppAvailSet",
+      "minLength": 1
+    },
+    "MgmtAvailSetName": {
+      "type": "string",
+      "defaultValue": "MgmtAvailSet",
+      "minLength": 1
+    },
+    "WebTier_nsg_name": {
+      "type": "string",
+      "defaultValue": "WebTier-nsg"
+    },
+    "AccessTier_nsg_name": {
+      "type": "string",
+      "defaultValue": "AccessTier-nsg"
+    },
+    "DataTier_nsg_name": {
+      "type": "string",
+      "defaultValue": "DataTier-nsg"
+    },
+    "MgmtTier_nsg_name": {
+      "type": "string",
+      "defaultValue": "MgmtTier-nsg"
+    },
+    "StageTier_nsg_name": {
+      "type": "string",
+      "defaultValue": "StageTier-nsg"
+    }
+
+
+
+  },
+    "variables": {
+      "MKP-vnetPrefix": "10.219.222.0/24",
+      "WebTierSubnetName": "WebTier",
+      "WebTierSubnetPrefix": "10.219.222.0/27",
+      "DataTierSubnetName": "DataTier",
+      "DataTierSubnetPrefix": "10.219.222.32/27",
+      "MgmtTierSubnetName": "MgmtTier",
+      "MgmtTierSubnetPrefix": "10.219.222.64/27",
+      "AccessTierSubnetName": "AccessTier",
+      "AccessTierSubnetPrefix": "10.219.222.96/27",
+      "GatewayTierSubnetName": "GatewayTier",
+      "GatewayTierSubnetPrefix": "10.219.222.224/27",
+      "StageTierSubnetName": "StageTier",
+      "StageTierSubnetPrefix": "10.219.222.192/27",
+      "ImagePublisher": "MicrosoftWindowsServer",
+      "ImageOffer": "WindowsServer",
+      "VnetID": "[resourceId('Microsoft.Network/virtualNetworks', 'MKP-vnet')]",
+      "StorageAccountContainerName": "vhds",
+      "DHA-KP-PTS01-PubIPName": "DHA-KP-PTS01-PubIP",
+      "DHA-KP-PTS01OSDiskName": "DHA-KP-PTS01OSDisk",
+      "DHA-KP-PTS01VmSize": "Standard_DS3_v2",
+      "DHA-KP-PTS01SubnetRef": "[concat(variables('VnetID'), '/subnets/', variables('AccessTierSubnetName'))]",
+      "DHA-KP-PTS01NicName": "[concat(parameters('DHA-KP-PTS01Name'), '-', 'nic0')]",
+      "DHA-HS-DC1OSDiskName": "DHA-HS-DC1OSDisk",
+      "DHA-HS-DC1VmSize": "Standard_D2_v2",
+      "DHA-HS-DC1SubnetRef": "[concat(variables('VnetID'), '/subnets/', variables('MgmtTierSubnetName'))]",
+      "DHA-HS-DC1NicName": "[concat(parameters('DHA-HS-DC1Name'), '-', 'nic0')]",
+      "DHA-KP-PWEB01OSDiskName": "DHA-KP-PWEB01OSDisk",
+      "DHA-KP-PWEB01VmSize": "Standard_D2_v2",
+      "DHA-KP-PWEB01SubnetRef": "[concat(variables('VnetID'), '/subnets/', variables('WebTierSubnetName'))]",
+      "DHA-KP-PWEB01NicName": "[concat(parameters('DHA-KP-PWEB01Name'), '-', 'nic0')]",
+      "DHA-KP-SAPP01OSDiskName": "DHA-KP-SAPP01OSDisk",
+      "DHA-KP-SAPP01VmSize": "Standard_D2_v2",
+      "DHA-KP-SAPP01SubnetRef": "[concat(variables('VnetID'), '/subnets/', variables('StageTierSubnetName'))]",
+      "DHA-KP-SAPP01NicName": "[concat(parameters('DHA-KP-SAPP01Name'), '-', 'nic0')]",
+      "DHA-KP-SMED01OSDiskName": "DHA-KP-SMED01OSDisk",
+      "DHA-KP-SMED01VmSize": "Standard_DS5_v2",
+      "DHA-KP-SMED01SubnetRef": "[concat(variables('VnetID'), '/subnets/', variables('StageTierSubnetName'))]",
+      "DHA-KP-SMED01NicName": "[concat(parameters('DHA-KP-SMED01Name'), '-', 'nic0')]",
+      "DHA-KP-SWEB01OSDiskName": "DHA-KP-SWEB01OSDisk",
+      "DHA-KP-SWEB01VmSize": "Standard_D2_v2",
+      "DHA-KP-SWEB01SubnetRef": "[concat(variables('VnetID'), '/subnets/', variables('StageTierSubnetName'))]",
+      "DHA-KP-SWEB01NicName": "[concat(parameters('DHA-KP-SWEB01Name'), '-', 'nic0')]",
+      "DHA-KP-PAPP01OSDiskName": "DHA-KP-PAPP01OSDisk",
+      "DHA-KP-PAPP01VmSize": "Standard_D4_v2",
+      "DHA-KP-PAPP01SubnetRef": "[concat(variables('VnetID'), '/subnets/', variables('DataTierSubnetName'))]",
+      "DHA-KP-PAPP01NicName": "[concat(parameters('DHA-KP-PAPP01Name'), '-', 'nic0')]",
+      "DHA-KP-PFILE01OSDiskName": "DHA-KP-PFILE01OSDisk",
+      "DHA-KP-PFILE01VmSize": "Standard_DS4_v2",
+      "DHA-KP-PFILE01SubnetRef": "[concat(variables('VnetID'), '/subnets/', variables('DataTierSubnetName'))]",
+      "DHA-KP-PFILE01NicName": "[concat(parameters('DHA-KP-PFILE01Name'), '-', 'nic0')]",
+      "DHA-KP-PMED01OSDiskName": "DHA-KP-PMED01OSDisk",
+      "DHA-KP-PMED01VmSize": "Standard_DS14_v2",
+      "DHA-KP-PMED01SubnetRef": "[concat(variables('VnetID'), '/subnets/', variables('DataTierSubnetName'))]",
+      "DHA-KP-PMED01NicName": "[concat(parameters('DHA-KP-PMED01Name'), '-', 'nic0')]",
+      "DHA-KP-PWEB01-PubIPName": "DHA-KP-PWEB01-PubIP"
+
+    },
+  "resources": [
+    {
+      "name": "[parameters('StorageNameArray')[copyIndex()]]",
+      "type": "Microsoft.Storage/storageAccounts",
+      "location": "[resourceGroup().location]",
+      "kind": "Storage",
+      "apiVersion": "2016-01-01",
+      "copy": {
+        "count": "[length(parameters('StorageTypeArray'))]",
+        "name": "storageCopy"
+      },
+      "sku": {
+        "name": "[parameters('StorageTypeArray')[copyIndex()]]"
+      },
+      "tags": {
+        "displayName": "StorageAccounts"
+      },
+      "properties": {
+        "encryption": {
+          "keySource": "Microsoft.Storage",
+          "services": {
+            "blob": {
+              "enabled": true
+            }
+          }
+        }
+      }
+    },
+
+    {
+      "name": "MKP-vnet",
+      "type": "Microsoft.Network/virtualNetworks",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-03-30",
+      "tags": {
+        "displayName": "MKP Virtual Network"
+      },
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[variables('MKP-vnetPrefix')]"
+          ]
+        },
+        "dhcpOptions": {
+          "dnsServers": [ "10.219.222.70", "8.8.8.8", "8.8.4.4" ]
+        },
+        "subnets": [
+          {
+            "name": "[variables('WebTierSubnetName')]",
+            "dependsOn": [
+              "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('WebTier_nsg_name'))]"
+            ],
+            "properties": {
+              "addressPrefix": "[variables('WebTierSubnetPrefix')]",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('WebTier_nsg_name'))]"
+              }
+            }
+          },
+          {
+            "name": "[variables('DataTierSubnetName')]",
+            "dependsOn": [
+              "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('DataTier_nsg_name'))]"
+            ],
+            "properties": {
+              "addressPrefix": "[variables('DataTierSubnetPrefix')]",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('DataTier_nsg_name'))]"
+              }
+            }
+          },
+          {
+            "name": "[variables('MgmtTierSubnetName')]",
+            "dependsOn": [
+              "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('MgmtTier_nsg_name'))]"
+            ],
+            "properties": {
+              "addressPrefix": "[variables('MgmtTierSubnetPrefix')]",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('MgmtTier_nsg_name'))]"
+              }
+            }
+          },
+          {
+            "name": "[variables('AccessTierSubnetName')]",
+            "dependsOn": [
+              "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('AccessTier_nsg_name'))]"
+            ],
+            "properties": {
+              "addressPrefix": "[variables('AccessTierSubnetPrefix')]",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('AccessTier_nsg_name'))]"
+              }
+            }
+          },
+          {
+            "name": "[variables('GatewayTierSubnetName')]",
+            "properties": {
+              "addressPrefix": "[variables('GatewayTierSubnetPrefix')]"
+            }
+          },
+          {
+            "name": "[variables('StageTierSubnetName')]",
+            "dependsOn": [
+              "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('StageTier_nsg_name'))]"
+            ],
+            "properties": {
+              "addressPrefix": "[variables('StageTierSubnetPrefix')]",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('StageTier_nsg_name'))]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[variables('DHA-KP-PTS01-PubIPName')]",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-03-30",
+      "dependsOn": [],
+      "tags": {
+        "displayName": "DHA-KP-PTS01-PubIP"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "dnsSettings": {
+          "domainNameLabel": "[parameters('DHA-KP-PTS01-PubIPDnsName')]"
+        }
+      }
+    },
+    {
+      "name": "[variables('DHA-KP-PWEB01-PubIPName')]",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-03-30",
+      "dependsOn": [],
+      "tags": {
+        "displayName": "DHA-KP-PWEB01-PubIP"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "dnsSettings": {
+          "domainNameLabel": "[parameters('DHA-KP-PWEB01-PubIPDnsName')]"
+        }
+      }
+    },
+    {
+      "name": "[variables('DHA-KP-PTS01NicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-03-30",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', 'MKP-vnet')]",
+        "[resourceId('Microsoft.Network/publicIPAddresses', variables('DHA-KP-PTS01-PubIPName'))]"
+      ],
+      "tags": {
+        "displayName": "DHA-KP-PTS01-nic0"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAddress": "10.219.222.100",
+              "privateIPAllocationMethod": "Static",
+              "subnet": {
+                "id": "[variables('DHA-KP-PTS01SubnetRef')]"
+              },
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('DHA-KP-PTS01-PubIPName'))]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('DHA-KP-PTS01Name')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('StorageNameArray')[0])]",
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('DHA-KP-PTS01NicName'))]"
+      ],
+      "tags": {
+        "displayName": "DHA-KP-PTS01"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('DHA-KP-PTS01VmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('DHA-KP-PTS01Name')]",
+          "adminUsername": "[parameters('AdminUsername')]",
+          "adminPassword": "[parameters('AdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('ImagePublisher')]",
+            "offer": "[variables('ImageOffer')]",
+            "sku": "[parameters('WindowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "DHA-KP-PTS01OSDisk",
+            "vhd": {
+              "uri": "[concat(reference(resourceId('Microsoft.Storage/storageAccounts', parameters('StorageNameArray')[0]), '2016-01-01').primaryEndpoints.blob, variables('StorageAccountContainerName'), '/', variables('DHA-KP-PTS01OSDiskName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('DHA-KP-PTS01NicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "[variables('DHA-HS-DC1NicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-03-30",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', 'MKP-vnet')]"
+      ],
+      "tags": {
+        "displayName": "DHA-HS-DC1-nic0"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAddress": "10.219.222.70",
+              "privateIPAllocationMethod": "Static",
+              "subnet": {
+                "id": "[variables('DHA-HS-DC1SubnetRef')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('DHA-HS-DC1Name')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('StorageNameArray')[0])]",
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('DHA-HS-DC1NicName'))]",
+        "[resourceId('Microsoft.Compute/availabilitySets', parameters('MgmtAvailSetName'))]"
+      ],
+      "tags": {
+        "displayName": "DHA-HS-DC1"
+      },
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('MgmtAvailSetName'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[variables('DHA-HS-DC1VmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('DHA-HS-DC1Name')]",
+          "adminUsername": "[parameters('AdminUsername')]",
+          "adminPassword": "[parameters('AdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('ImagePublisher')]",
+            "offer": "[variables('ImageOffer')]",
+            "sku": "[parameters('WindowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "DHA-HS-DC1OSDisk",
+            "vhd": {
+              "uri": "[concat(reference(resourceId('Microsoft.Storage/storageAccounts', parameters('StorageNameArray')[0]), '2016-01-01').primaryEndpoints.blob, variables('StorageAccountContainerName'), '/', variables('DHA-HS-DC1OSDiskName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('DHA-HS-DC1NicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "[variables('DHA-KP-PWEB01NicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-03-30",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', 'MKP-vnet')]",
+        "[resourceId('Microsoft.Network/publicIPAddresses', variables('DHA-KP-PWEB01-PubIPName'))]"
+      ],
+      "tags": {
+        "displayName": "DHA-KP-PWEB01-nic0"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAddress": "10.219.222.5",
+              "privateIPAllocationMethod": "Static",
+              "subnet": {
+                "id": "[variables('DHA-KP-PWEB01SubnetRef')]"
+              },
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('DHA-KP-PWEB01-PubIPName'))]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('DHA-KP-PWEB01Name')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('StorageNameArray')[0])]",
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('DHA-KP-PWEB01NicName'))]",
+        "[resourceId('Microsoft.Compute/availabilitySets', parameters('WebAvailSetName'))]"
+      ],
+      "tags": {
+        "displayName": "DHA-KP-PWEB01"
+      },
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('WebAvailSetName'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[variables('DHA-KP-PWEB01VmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('DHA-KP-PWEB01Name')]",
+          "adminUsername": "[parameters('AdminUsername')]",
+          "adminPassword": "[parameters('AdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('ImagePublisher')]",
+            "offer": "[variables('ImageOffer')]",
+            "sku": "[parameters('WindowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "DHA-KP-PWEB01OSDisk",
+            "vhd": {
+              "uri": "[concat(reference(resourceId('Microsoft.Storage/storageAccounts', parameters('StorageNameArray')[0]), '2016-01-01').primaryEndpoints.blob, variables('StorageAccountContainerName'), '/', variables('DHA-KP-PWEB01OSDiskName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('DHA-KP-PWEB01NicName'))]"
+            }
+          ]
+        }
+      },
+      "resources": [
+        
+      ]
+    },
+    {
+      "name": "[variables('DHA-KP-SAPP01NicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-03-30",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', 'MKP-vnet')]"
+      ],
+      "tags": {
+        "displayName": "DHA-KP-SAPP01-nic0"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAddress": "10.219.222.197",
+              "privateIPAllocationMethod": "Static",
+              "subnet": {
+                "id": "[variables('DHA-KP-SAPP01SubnetRef')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('DHA-KP-SAPP01Name')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('StorageNameArray')[1])]",
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('DHA-KP-SAPP01NicName'))]"
+      ],
+      "tags": {
+        "displayName": "DHA-KP-SAPP01"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('DHA-KP-SAPP01VmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('DHA-KP-SAPP01Name')]",
+          "adminUsername": "[parameters('AdminUsername')]",
+          "adminPassword": "[parameters('AdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('ImagePublisher')]",
+            "offer": "[variables('ImageOffer')]",
+            "sku": "[parameters('WindowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "DHA-KP-SAPP01OSDisk",
+            "vhd": {
+              "uri": "[concat(reference(resourceId('Microsoft.Storage/storageAccounts', parameters('StorageNameArray')[1]), '2016-01-01').primaryEndpoints.blob, variables('StorageAccountContainerName'), '/', variables('DHA-KP-SAPP01OSDiskName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('DHA-KP-SAPP01NicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "[variables('DHA-KP-SMED01NicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-03-30",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', 'MKP-vnet')]"
+      ],
+      "tags": {
+        "displayName": "DHA-KP-SMED01-nic0"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAddress": "10.219.222.196",
+              "privateIPAllocationMethod": "Static",
+              "subnet": {
+                "id": "[variables('DHA-KP-SMED01SubnetRef')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('DHA-KP-SMED01Name')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('StorageNameArray')[1])]",
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('DHA-KP-SMED01NicName'))]"
+      ],
+      "tags": {
+        "displayName": "DHA-KP-SMED01"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('DHA-KP-SMED01VmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('DHA-KP-SMED01Name')]",
+          "adminUsername": "[parameters('AdminUsername')]",
+          "adminPassword": "[parameters('AdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('ImagePublisher')]",
+            "offer": "[variables('ImageOffer')]",
+            "sku": "[parameters('WindowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "DHA-KP-SMED01OSDisk",
+            "vhd": {
+              "uri": "[concat(reference(resourceId('Microsoft.Storage/storageAccounts', parameters('StorageNameArray')[1]), '2016-01-01').primaryEndpoints.blob, variables('StorageAccountContainerName'), '/', variables('DHA-KP-SMED01OSDiskName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('DHA-KP-SMED01NicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "[variables('DHA-KP-SWEB01NicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-03-30",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', 'MKP-vnet')]"
+      ],
+      "tags": {
+        "displayName": "DHA-KP-SWEB01-nic0"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAddress": "10.219.222.198",
+              "privateIPAllocationMethod": "Static",
+              "subnet": {
+                "id": "[variables('DHA-KP-SWEB01SubnetRef')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('DHA-KP-SWEB01Name')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('StorageNameArray')[1])]",
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('DHA-KP-SWEB01NicName'))]"
+      ],
+      "tags": {
+        "displayName": "DHA-KP-SWEB01"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('DHA-KP-SWEB01VmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('DHA-KP-SWEB01Name')]",
+          "adminUsername": "[parameters('AdminUsername')]",
+          "adminPassword": "[parameters('AdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('ImagePublisher')]",
+            "offer": "[variables('ImageOffer')]",
+            "sku": "[parameters('WindowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "DHA-KP-SWEB01OSDisk",
+            "vhd": {
+              "uri": "[concat(reference(resourceId('Microsoft.Storage/storageAccounts', parameters('StorageNameArray')[1]), '2016-01-01').primaryEndpoints.blob, variables('StorageAccountContainerName'), '/', variables('DHA-KP-SWEB01OSDiskName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('DHA-KP-SWEB01NicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "[variables('DHA-KP-PAPP01NicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-03-30",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', 'MKP-vnet')]"
+      ],
+      "tags": {
+        "displayName": "DHA-KP-PAPP01-nic0"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAddress": "10.219.222.37",
+              "privateIPAllocationMethod": "Static",
+              "subnet": {
+                "id": "[variables('DHA-KP-PAPP01SubnetRef')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('DHA-KP-PAPP01Name')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('StorageNameArray')[0])]",
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('DHA-KP-PAPP01NicName'))]",
+        "[resourceId('Microsoft.Compute/availabilitySets', parameters('AppAvailSetName'))]"
+      ],
+      "tags": {
+        "displayName": "DHA-KP-PAPP01"
+      },
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('AppAvailSetName'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[variables('DHA-KP-PAPP01VmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('DHA-KP-PAPP01Name')]",
+          "adminUsername": "[parameters('AdminUsername')]",
+          "adminPassword": "[parameters('AdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('ImagePublisher')]",
+            "offer": "[variables('ImageOffer')]",
+            "sku": "[parameters('WindowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "DHA-KP-PAPP01OSDisk",
+            "vhd": {
+              "uri": "[concat(reference(resourceId('Microsoft.Storage/storageAccounts', parameters('StorageNameArray')[0]), '2016-01-01').primaryEndpoints.blob, variables('StorageAccountContainerName'), '/', variables('DHA-KP-PAPP01OSDiskName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('DHA-KP-PAPP01NicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "[variables('DHA-KP-PFILE01NicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-03-30",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', 'MKP-vnet')]"
+      ],
+      "tags": {
+        "displayName": "DHA-KP-PFILE01-nic0"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAddress": "10.219.222.38",
+              "privateIPAllocationMethod": "Static",
+              "subnet": {
+                "id": "[variables('DHA-KP-PFILE01SubnetRef')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('DHA-KP-PFILE01Name')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('StorageNameArray')[0])]",
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('DHA-KP-PFILE01NicName'))]",
+        "[resourceId('Microsoft.Compute/availabilitySets', parameters('FileAvailSetName'))]"
+      ],
+      "tags": {
+        "displayName": "DHA-KP-PFILE01"
+      },
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('FileAvailSetName'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[variables('DHA-KP-PFILE01VmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('DHA-KP-PFILE01Name')]",
+          "adminUsername": "[parameters('AdminUsername')]",
+          "adminPassword": "[parameters('AdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('ImagePublisher')]",
+            "offer": "[variables('ImageOffer')]",
+            "sku": "[parameters('WindowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "DHA-KP-PFILE01OSDisk",
+            "vhd": {
+              "uri": "[concat(reference(resourceId('Microsoft.Storage/storageAccounts', parameters('StorageNameArray')[0]), '2016-01-01').primaryEndpoints.blob, variables('StorageAccountContainerName'), '/', variables('DHA-KP-PFILE01OSDiskName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('DHA-KP-PFILE01NicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "[variables('DHA-KP-PMED01NicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-03-30",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', 'MKP-vnet')]"
+      ],
+      "tags": {
+        "displayName": "DHA-KP-PMED01-nic0"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAddress": "10.219.222.36",
+              "privateIPAllocationMethod": "Static",
+              "subnet": {
+                "id": "[variables('DHA-KP-PMED01SubnetRef')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('DHA-KP-PMED01Name')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "storageCopy",
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('DHA-KP-PMED01NicName'))]",
+        "[resourceId('Microsoft.Compute/availabilitySets', parameters('DBAvailSetName'))]"
+      ],
+      "tags": {
+        "displayName": "DHA-KP-PMED01"
+      },
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('DBAvailSetName'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[variables('DHA-KP-PMED01VmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('DHA-KP-PMED01Name')]",
+          "adminUsername": "[parameters('AdminUsername')]",
+          "adminPassword": "[parameters('AdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('ImagePublisher')]",
+            "offer": "[variables('ImageOffer')]",
+            "sku": "[parameters('WindowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "DHA-KP-PMED01OSDisk",
+            "vhd": {
+              "uri": "[concat(reference(resourceId('Microsoft.Storage/storageAccounts', parameters('StorageNameArray')[3]), '2016-01-01').primaryEndpoints.blob, variables('StorageAccountContainerName'), '/', variables('DHA-KP-PMED01OSDiskName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          },
+          "dataDisks": [
+            {
+              "lun": 1,
+              "name": "[concat(parameters('DHA-KP-PMED01Name'),'-APPDISK1')]",
+              "createOption": "Empty",
+              "vhd": {
+                "uri": "[concat('https', '://', parameters('StorageNameArray')[3], '.blob.core.usgovcloudapi.net', concat('/vhds/', parameters('DHA-KP-PMED01Name'),'-APPDISK1.vhd'))]"
+              },
+              "caching": "ReadOnly",
+              "diskSizeGB": 512
+            },
+            {
+              "lun": 2,
+              "name": "[concat(parameters('DHA-KP-PMED01Name'),'-APPDISK2')]",
+              "createOption": "Empty",
+              "vhd": {
+                "uri": "[concat('https', '://', parameters('StorageNameArray')[3], '.blob.core.usgovcloudapi.net', concat('/vhds/', parameters('DHA-KP-PMED01Name'),'-APPDISK2.vhd'))]"
+              },
+              "caching": "ReadOnly",
+              "diskSizeGB": 512
+            },
+            {
+              "lun": 3,
+              "name": "[concat(parameters('DHA-KP-PMED01Name'),'-DATADISK1')]",
+              "createOption": "Empty",
+              "vhd": {
+                "uri": "[concat('https', '://', parameters('StorageNameArray')[3], '.blob.core.usgovcloudapi.net', concat('/vhds/', parameters('DHA-KP-PMED01Name'),'-DATADISK1.vhd'))]"
+              },
+              "caching": "ReadOnly",
+              "diskSizeGB": 512
+            },
+            {
+              "lun": 4,
+              "name": "[concat(parameters('DHA-KP-PMED01Name'),'-DATADISK2')]",
+              "createOption": "Empty",
+              "vhd": {
+                "uri": "[concat('https', '://', parameters('StorageNameArray')[3], '.blob.core.usgovcloudapi.net', concat('/vhds/', parameters('DHA-KP-PMED01Name'),'-DATADISK2.vhd'))]"
+              },
+              "caching": "ReadOnly",
+              "diskSizeGB": 512
+            },
+            {
+              "lun": 5,
+              "name": "[concat(parameters('DHA-KP-PMED01Name'),'-LOGDISK1')]",
+              "createOption": "Empty",
+              "vhd": {
+                "uri": "[concat('https', '://', parameters('StorageNameArray')[3], '.blob.core.usgovcloudapi.net', concat('/vhds/', parameters('DHA-KP-PMED01Name'),'-LOGDISK1.vhd'))]"
+              },
+              "caching": "ReadOnly",
+              "diskSizeGB": 512
+            },
+            {
+              "lun": 6,
+              "name": "[concat(parameters('DHA-KP-PMED01Name'),'-LOGDISK2')]",
+              "createOption": "Empty",
+              "vhd": {
+                "uri": "[concat('https', '://', parameters('StorageNameArray')[3], '.blob.core.usgovcloudapi.net', concat('/vhds/', parameters('DHA-KP-PMED01Name'),'-LOGDISK2.vhd'))]"
+              },
+              "caching": "ReadOnly",
+              "diskSizeGB": 512
+            }
+          ]
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('DHA-KP-PMED01NicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "[parameters('AvailabilitySetArray')[copyIndex()]]",
+      "type": "Microsoft.Compute/availabilitySets",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "copy": {
+        "count": "[length(parameters('AvailabilitySetArray'))]",
+        "name": "AvailSetCopy"
+      },
+      "tags": {
+        "displayName": "AvailabilitySets"
+      },
+      "properties": {
+        "platformUpdateDomainCount": 1,
+        "platformFaultDomainCount": 1
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[parameters('WebTier_nsg_name')]",
+      "apiVersion": "2015-06-15",
+      "tags": {
+        "displayName": "WebTier-nsg"
+      },
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "allow-https",
+            "properties": {
+              "protocol": "TCP",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 100,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "allow-http",
+            "properties": {
+              "protocol": "TCP",
+              "sourcePortRange": "*",
+              "destinationPortRange": "80",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 110,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "allow-all-access-tier",
+            "properties": {
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "10.219.222.96/27",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 200,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "deny-all",
+            "properties": {
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Deny",
+              "priority": 4096,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "allow-all-web-tier",
+            "properties": {
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "10.219.222.0/27",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 210,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "allow-smtp",
+            "properties": {
+              "protocol": "TCP",
+              "sourcePortRange": "*",
+              "destinationPortRange": "25",
+              "sourceAddressPrefix": "10.219.222.32/27",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 130,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[parameters('AccessTier_nsg_name')]",
+      "apiVersion": "2015-06-15",
+      "tags": {
+        "displayName": "AccessTier-nsg"
+      },
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "allow-rdp",
+            "properties": {
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "3389",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 100,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[parameters('DataTier_nsg_name')]",
+      "apiVersion": "2015-06-15",
+      "tags": {
+        "displayName": "DataTier-nsg"
+      },
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "allow-smb",
+            "properties": {
+              "protocol": "TCP",
+              "sourcePortRange": "*",
+              "destinationPortRange": "445",
+              "sourceAddressPrefix": "10.219.222.0/27",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 100,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "allow-http",
+            "properties": {
+              "protocol": "TCP",
+              "sourcePortRange": "*",
+              "destinationPortRange": "80",
+              "sourceAddressPrefix": "10.219.222.0/27",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 110,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "allow-8740",
+            "properties": {
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "8740",
+              "sourceAddressPrefix": "10.219.222.0/27",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 120,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "allow-sql",
+            "properties": {
+              "protocol": "TCP",
+              "sourcePortRange": "*",
+              "destinationPortRange": "1433",
+              "sourceAddressPrefix": "10.219.222.0/27",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 130,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "allow-all-access-tier",
+            "properties": {
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "10.219.222.96/27",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 200,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "allow-udp-1433",
+            "properties": {
+              "protocol": "UDP",
+              "sourcePortRange": "*",
+              "destinationPortRange": "1433",
+              "sourceAddressPrefix": "10.219.222.0/27",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 140,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "allow-5263",
+            "properties": {
+              "protocol": "TCP",
+              "sourcePortRange": "*",
+              "destinationPortRange": "5263",
+              "sourceAddressPrefix": "10.219.222.0/27",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 150,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "deny-all",
+            "properties": {
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Deny",
+              "priority": 4096,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "allow-all-data-tier",
+            "properties": {
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 210,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[parameters('MgmtTier_nsg_name')]",
+      "apiVersion": "2015-06-15",
+      "tags": {
+        "displayName": "MgmtTier-nsg"
+      },
+      "location": "[resourceGroup().location]",
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[parameters('StageTier_nsg_name')]",
+      "apiVersion": "2015-06-15",
+      "tags": {
+        "displayName": "StageTier-nsg"
+      },
+      "location": "[resourceGroup().location]",
+      "properties": {}
+    }
+  ],
+
+  "outputs": {
+
+  }
+}
